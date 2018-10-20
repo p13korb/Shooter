@@ -31,7 +31,8 @@ body {
 		var fireButton;
 		var bulletTimer = 0;
 		var gunshot;
-		var explosion;
+		var destroyed;
+		var explosions;
 		var firstEnemy;
 
 		var ACCLERATION = 600;
@@ -49,7 +50,7 @@ body {
 			game.load.image('ship', 'assets/ship.png');
 			game.load.image('bullet', 'assets/bullets/bullet.png');
 			game.load.audio('gunshot', 'assets/audio/gunshot.wav');
-			game.load.audio('explosion', 'assets/audio/explosion.mp3');
+			game.load.audio('destroyed', 'assets/audio/explosion.mp3');
 			game.load.image('firstEnemy', 'assets/enemies/enemy2.png');
 			game.load.spritesheet('explosion', 'assets/explode.png', 128, 128);
 
@@ -115,8 +116,17 @@ body {
 			shipTrail.start(false, 5000, 10);
 
 			gunshot = game.add.audio('gunshot');
-			explosion = game.add.audio('explosion');
-
+			destroyed = game.add.audio('destroyed');
+			//  An explosion pool
+		    explosions = game.add.group();
+		    explosions.enableBody = true;
+		    explosions.physicsBodyType = Phaser.Physics.ARCADE;
+		    explosions.createMultiple(30, 'explosion');
+		    explosions.setAll('anchor.x', 0.5);
+		    explosions.setAll('anchor.y', 0.5);
+		    explosions.forEach( function(explosion) {
+		        explosion.animations.add('explosion');
+		    });
 		}
 
 		function update() {
@@ -164,6 +174,9 @@ body {
 			//  Keep the shipTrail lined up with the ship
 			shipTrail.y = player.y;
 			shipTrail.x = player.x - 20;
+
+			//  Check collisions
+    		game.physics.arcade.overlap(player, firstEnemy, shipCollide, null, this);
 
 		}
 
@@ -232,6 +245,15 @@ body {
 		    enemyTrail.setAlpha(0.4, 0, 800);
 		    enemyTrail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
 		    enemy.trail = enemyTrail;
+		}
+		function shipCollide(player, enemy) {
+		    var explosion = explosions.getFirstExists(false);
+		    explosion.reset(enemy.body.x + enemy.body.halfWidth, enemy.body.y + enemy.body.halfHeight);
+		    explosion.body.velocity.y = enemy.body.velocity.y;
+		    explosion.alpha = 0.7;
+		    explosion.play('explosion', 30, false, true);
+		    enemy.kill();
+			destroyed.play();
 		}
 	</script>
 </body>
