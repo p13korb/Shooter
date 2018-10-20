@@ -30,8 +30,9 @@ body {
 		var bullets;
 		var fireButton;
 		var bulletTimer = 0;
-		var gunshot;//tha fygei
+		var gunshot;
 		var explosion;
+		var firstEnemy;
 
 		var ACCLERATION = 600;
 		var DRAG = 400;
@@ -41,14 +42,16 @@ body {
 
 			//  We need this because the assets are on github pages
 			//  Remove the next 2 lines if running locally
-			game.load.baseURL = 'https://p13korb.github.io/Shooter/';
-			game.load.crossOrigin = 'anonymous';
+			//game.load.baseURL = 'https://p13korb.github.io/Shooter/';
+			//game.load.crossOrigin = 'anonymous';
 
 			game.load.image('starfield', 'assets/starfield.png');
 			game.load.image('ship', 'assets/ship.png');
 			game.load.image('bullet', 'assets/bullets/bullet.png');
 			game.load.audio('gunshot', 'assets/audio/gunshot.wav');
 			game.load.audio('explosion', 'assets/audio/explosion.mp3');
+			game.load.image('firstEnemy', 'assets/enemies/enemy2.png');
+			game.load.spritesheet('explosion', 'assets/explode.png', 128, 128);
 
 		}
 
@@ -75,6 +78,25 @@ body {
 			game.physics.enable(player, Phaser.Physics.ARCADE);
 			player.body.maxVelocity.setTo(MAXSPEED, MAXSPEED);
 			player.body.drag.setTo(DRAG, DRAG);
+
+			//  The baddies!
+		    firstEnemy = game.add.group();
+		    firstEnemy.enableBody = true;
+		    firstEnemy.physicsBodyType = Phaser.Physics.ARCADE;
+		    firstEnemy.createMultiple(5, 'firstEnemy');
+		    firstEnemy.setAll('anchor.x', 0.5);
+		    firstEnemy.setAll('anchor.y', 0.5);
+		    firstEnemy.setAll('scale.x', 0.5);
+		    firstEnemy.setAll('scale.y', 0.5);
+		    firstEnemy.setAll('angle', 90);
+			firstEnemy.forEach(function(enemy){
+		        addEnemyEmitterTrail(enemy);
+		        enemy.events.onKilled.add(function(){
+		            enemy.trail.kill();
+		        });
+		    });
+
+		    launchFirstEnemy();
 
 			//  And some controls to play the game with
 			cursors = game.input.keyboard.createCursorKeys();
@@ -172,6 +194,44 @@ body {
 					gunshot.play();
 				}
 			}
+		}
+
+		function launchFirstEnemy() {
+		    var MIN_ENEMY_SPACING = 300;
+		    var MAX_ENEMY_SPACING = 3000;
+		    var ENEMY_SPEED = 300;
+
+		    var enemy = firstEnemy.getFirstExists(false);
+		    if (enemy) {
+		        enemy.reset(game.width, game.rnd.integerInRange(0, game.height));
+		        enemy.body.velocity.y = game.rnd.integerInRange(-300, 300);
+		        enemy.body.velocity.x = -ENEMY_SPEED;
+		        enemy.body.drag.y = 100;
+				enemy.trail.start(false, 800, 1);
+				//  Update function for each enemy ship to update rotation etc
+        		enemy.update = function(){
+          			enemy.angle = 270 - game.math.radToDeg(Math.atan2(enemy.body.velocity.x, enemy.body.velocity.y));
+					enemy.trail.x = enemy.x;
+          			enemy.trail.y = enemy.y;
+					//  Kill enemies once they go off screen
+					if (enemy.x == 0) {
+						enemy.kill();
+					}
+        		}
+		    }
+
+		    //  Send another enemy soon
+		    game.time.events.add(game.rnd.integerInRange(MIN_ENEMY_SPACING, MAX_ENEMY_SPACING), launchFirstEnemy);
+		}
+		function addEnemyEmitterTrail(enemy) {
+		    var enemyTrail = game.add.emitter(enemy.x, player.y - 10, 100);
+		    enemyTrail.width = 10;
+		    enemyTrail.makeParticles('explosion', [1,2,3,4,5]);
+		    enemyTrail.setXSpeed(20, -20);
+		    enemyTrail.setRotation(50,-50);
+		    enemyTrail.setAlpha(0.4, 0, 800);
+		    enemyTrail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
+		    enemy.trail = enemyTrail;
 		}
 	</script>
 </body>
