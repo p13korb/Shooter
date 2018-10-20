@@ -34,6 +34,11 @@ body {
 		var destroyed;
 		var explosions;
 		var firstEnemy;
+		var shields;
+		var firstEnemyLaunchTimer;
+		var gameOver;
+		var score = 0;
+		var scoreText;
 
 		var ACCLERATION = 600;
 		var DRAG = 400;
@@ -75,10 +80,17 @@ body {
 
 			//  The hero!
 			player = game.add.sprite(100, game.height / 2, 'ship');
+			player.health = 100;
 			player.anchor.setTo(0.5, 0.5);
 			game.physics.enable(player, Phaser.Physics.ARCADE);
 			player.body.maxVelocity.setTo(MAXSPEED, MAXSPEED);
 			player.body.drag.setTo(DRAG, DRAG);
+			player.events.onKilled.add(function(){
+        		shipTrail.kill();
+    		});
+			player.events.onRevived.add(function(){
+        		shipTrail.start(false, 5000, 10);
+    		});
 
 			//  The baddies!
 		    firstEnemy = game.add.group();
@@ -92,12 +104,13 @@ body {
 		    firstEnemy.setAll('angle', 90);
 			firstEnemy.forEach(function(enemy){
 		        addEnemyEmitterTrail(enemy);
+				enemy.damageAmount = 20;
 		        enemy.events.onKilled.add(function(){
 		            enemy.trail.kill();
 		        });
 		    });
 
-		    launchFirstEnemy();
+		    game.time.events.add(1000, launchFirstEnemy);
 
 			//  And some controls to play the game with
 			cursors = game.input.keyboard.createCursorKeys();
@@ -127,6 +140,21 @@ body {
 		    explosions.forEach( function(explosion) {
 		        explosion.animations.add('explosion');
 		    });
+			//  Shields stat
+		    shields = game.add.text(game.world.width - 150, 10, 'Shields: ' + player.health +'%', { font: '20px Arial', fill: '#fff' });
+		    shields.render = function () {
+		        shields.text = 'Shields: ' + Math.max(player.health, 0) +'%';
+		    };
+			//  Score
+		    scoreText = game.add.text(10, 10, '', { font: '20px Arial', fill: '#fff' });
+		    scoreText.render = function () {
+		        scoreText.text = 'Score: ' + score;
+		    };
+		    scoreText.render();
+			//  Game over text
+		    gameOver = game.add.text(game.world.centerX, game.world.centerY, 'GAME OVER!', { font: '84px Arial', fill: '#fff' });
+		    gameOver.anchor.setTo(0.5, 0.5);
+		    gameOver.visible = false;
 		}
 
 		function update() {
@@ -178,6 +206,25 @@ body {
 			//  Check collisions
     		game.physics.arcade.overlap(player, firstEnemy, shipCollide, null, this);
 			game.physics.arcade.overlap(firstEnemy, bullets, hitEnemy, null, this);
+			//  Game over?
+		    if (! player.alive && gameOver.visible === false) {
+		        gameOver.visible = true;
+				gameOver.alpha = 0;
+		        var fadeInGameOver = game.add.tween(gameOver);
+		        fadeInGameOver.to({alpha: 1}, 1000, Phaser.Easing.Quintic.Out);
+		        fadeInGameOver.onComplete.add(setResetHandlers);
+		        fadeInGameOver.start();
+		        function setResetHandlers() {
+		            //  The "click to restart" handler
+		            tapRestart = game.input.onTap.addOnce(_restart,this);
+		            spaceRestart = fireButton.onDown.addOnce(_restart,this);
+		            function _restart() {
+		              tapRestart.detach();
+		              spaceRestart.detach();
+		              restart();
+		            }
+		        }
+		    }
 
 		}
 
@@ -235,7 +282,7 @@ body {
 		    }
 
 		    //  Send another enemy soon
-		    game.time.events.add(game.rnd.integerInRange(MIN_ENEMY_SPACING, MAX_ENEMY_SPACING), launchFirstEnemy);
+			firstEnemyLaunchTimer = game.time.events.add(game.rnd.integerInRange(MIN_ENEMY_SPACING, MAX_ENEMY_SPACING), launchFirstEnemy);
 		}
 		function addEnemyEmitterTrail(enemy) {
 		    var enemyTrail = game.add.emitter(enemy.x, player.y - 10, 100);
@@ -255,6 +302,8 @@ body {
 		    explosion.play('explosion', 30, false, true);
 		    enemy.kill();
 			destroyed.play();
+			player.damage(enemy.damageAmount);
+    		shields.render();
 		}
 		function hitEnemy(enemy, bullet) {
 		    var explosion = explosions.getFirstExists(false);
@@ -265,6 +314,26 @@ body {
 		    enemy.kill();
 		    bullet.kill();
 			destroyed.play();
+			// Increase score
+    		score += enemy.damageAmount * 10;
+    		scoreText.render()
+		}
+		function restart () {
+		    //  Reset the enemies
+		    firstEnemy.callAll('kill');
+		    game.time.events.remove(firstEnemyLaunchTimer);
+		    game.time.events.add(1000, launchFirstEnemy);
+
+		    //  Revive the player
+		    player.revive();
+		    player.health = 100;
+		    shields.render();
+		    score = 0;
+		    scoreText.render();
+
+		    //  Hide the text
+		    gameOver.visible = false;
+
 		}
 	</script>
 </body>
