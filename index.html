@@ -39,6 +39,11 @@ body {
 		var gameOver;
 		var score = 0;
 		var scoreText;
+		var secondEnemy;
+		var secondEnemyLaunchTimer;
+		var enemyBullets;
+		var firstEnemySpacing = 1000;
+		var secondEnemyLaunched = false;
 
 		var ACCLERATION = 600;
 		var DRAG = 400;
@@ -57,6 +62,8 @@ body {
 			game.load.audio('gunshot', 'assets/audio/gunshot.wav');
 			game.load.audio('destroyed', 'assets/audio/explosion.mp3');
 			game.load.image('firstEnemy', 'assets/enemies/enemy2.png');
+			game.load.image('secondEnemy', 'assets/enemies/enemy3.png');
+			game.load.image('secondEnemyBullet', 'assets/bullets/blue-enemy-bullet.png');
 			game.load.spritesheet('explosion', 'assets/explode.png', 128, 128);
 			game.load.bitmapFont('customfont', 'assets/font.png', 'assets/font.fnt');
 
@@ -112,6 +119,21 @@ body {
 		    });
 
 		    game.time.events.add(1000, launchFirstEnemy);
+			//deyteros exthros
+			secondEnemy = game.add.group();
+		    secondEnemy.enableBody = true;
+		    secondEnemy.physicsBodyType = Phaser.Physics.ARCADE;
+		    secondEnemy.createMultiple(30, 'secondEnemy');
+		    secondEnemy.setAll('anchor.x', 0.5);
+		    secondEnemy.setAll('anchor.y', 0.5);
+		    secondEnemy.setAll('scale.x', 0.5);
+		    secondEnemy.setAll('scale.y', 0.5);
+		    secondEnemy.setAll('angle', 180);
+		    secondEnemy.forEach(function(enemy){
+		        enemy.damageAmount = 40;
+		    });
+
+
 
 			//  And some controls to play the game with
 			cursors = game.input.keyboard.createCursorKeys();
@@ -158,6 +180,21 @@ body {
     		gameOver.x = gameOver.x - gameOver.textWidth / 2;
     		gameOver.y = gameOver.y - gameOver.textHeight / 3;
 		    gameOver.visible = false;
+
+			//  Blue enemy's bullets
+		    secondEnemyBullets = game.add.group();
+		    secondEnemyBullets.enableBody = true;
+		    secondEnemyBullets.physicsBodyType = Phaser.Physics.ARCADE;
+		    secondEnemyBullets.createMultiple(30, 'secondEnemyBullet');
+		    secondEnemyBullets.callAll('crop', null, {x: 90, y: 0, width: 90, height: 70});
+		    secondEnemyBullets.setAll('alpha', 0.9);
+		    secondEnemyBullets.setAll('anchor.x', 0.5);
+		    secondEnemyBullets.setAll('anchor.y', 0.5);
+		    secondEnemyBullets.setAll('outOfBoundsKill', true);
+		    secondEnemyBullets.setAll('checkWorldBounds', true);
+		    secondEnemyBullets.forEach(function(enemy){
+		        enemy.body.setSize(20, 20);
+		    });
 		}
 
 		function update() {
@@ -209,6 +246,9 @@ body {
 			//  Check collisions
     		game.physics.arcade.overlap(player, firstEnemy, shipCollide, null, this);
 			game.physics.arcade.overlap(firstEnemy, bullets, hitEnemy, null, this);
+			game.physics.arcade.overlap(player, secondEnemy, shipCollide, null, this);
+    		game.physics.arcade.overlap(bullets, secondEnemy, hitEnemy, null, this);
+			game.physics.arcade.overlap(secondEnemyBullets, player, enemyHitsPlayer, null, this);
 			//  Game over?
 		    if (! player.alive && gameOver.visible === false) {
 		        gameOver.visible = true;
@@ -261,8 +301,6 @@ body {
 		}
 
 		function launchFirstEnemy() {
-		    var MIN_ENEMY_SPACING = 300;
-		    var MAX_ENEMY_SPACING = 3000;
 		    var ENEMY_SPEED = 300;
 
 		    var enemy = firstEnemy.getFirstExists(false);
@@ -285,7 +323,7 @@ body {
 		    }
 
 		    //  Send another enemy soon
-			firstEnemyLaunchTimer = game.time.events.add(game.rnd.integerInRange(MIN_ENEMY_SPACING, MAX_ENEMY_SPACING), launchFirstEnemy);
+			firstEnemyLaunchTimer = game.time.events.add(game.rnd.integerInRange(firstEnemySpacing, firstEnemySpacing + 1000), launchFirstEnemy);
 		}
 		function addEnemyEmitterTrail(enemy) {
 		    var enemyTrail = game.add.emitter(enemy.x, player.y - 10, 100);
@@ -319,14 +357,26 @@ body {
 			destroyed.play();
 			// Increase score
     		score += enemy.damageAmount * 10;
-    		scoreText.render()
+    		scoreText.render();
+			//  Pacing
+		    //  Enemies come quicker as score increases
+		    firstEnemySpacing *= 0.9;
+		    //  Blue enemies come in after a score of 1000
+		    if (!secondEnemyLaunched && score > 1000) {
+				secondEnemyLaunched = true;
+				launchSecondEnemy();
+				//  Slow green enemies down now that there are other enemies
+				firstEnemySpacing *= 2;
+		    }
 		}
 		function restart () {
 		    //  Reset the enemies
 		    firstEnemy.callAll('kill');
 		    game.time.events.remove(firstEnemyLaunchTimer);
 		    game.time.events.add(1000, launchFirstEnemy);
-
+			secondEnemy.callAll('kill');
+			secondEnemyBullets.callAll('kill');
+    		game.time.events.remove(secondEnemyLaunchTimer);
 		    //  Revive the player
 		    player.revive();
 		    player.health = 100;
@@ -336,6 +386,73 @@ body {
 
 		    //  Hide the text
 		    gameOver.visible = false;
+			//  Reset pacing
+    		firstEnemySpacing = 1000;
+    		secondEnemyLaunched = false;
+		}
+		function launchSecondEnemy() {
+		    var startingY = game.rnd.integerInRange(100, game.height - 100);
+		    var verticalSpeed = 180;
+		    var spread = 60;
+		    var frequency = 70;
+		    var verticalSpacing = 70;
+		    var numEnemiesInWave = 5;
+		    var timeBetweenWaves = 2500;
+
+		    //  Launch wave
+		    for (var i =0; i < numEnemiesInWave; i++) {
+		        var enemy = secondEnemy.getFirstExists(false);
+		        if (enemy) {
+					enemy.startingY = startingY;
+		            enemy.reset(game.width + verticalSpacing * i, enemy.y);
+		            enemy.body.velocity.x = -verticalSpeed;
+					//  Set up firing
+		            var bulletSpeed = 400;
+		            var firingDelay = 2000;
+		            enemy.bullets = 1;
+		            enemy.lastShot = 0;
+		            //  Update function for each enemy
+		            enemy.update = function(){
+						//  Wave movement
+						this.body.y = this.startingY + Math.sin((this.x) / frequency) * spread;
+
+						//  Squish and rotate ship for illusion of "banking"
+						bank = Math.cos((this.y + 60) / frequency)
+						this.scale.x = 0.5 - Math.abs(bank) / 8;
+						this.angle = bank * 2;
+						//  Fire
+				  		enemyBullet = secondEnemyBullets.getFirstExists(false);
+						if (enemyBullet &&
+						this.alive &&
+						this.bullets &&
+						this.x < game.width / 2 &&
+						game.time.now > firingDelay + this.lastShot) {
+							this.lastShot = game.time.now;
+							this.bullets--;
+							enemyBullet.reset(this.x, this.y + this.height / 2);
+							enemyBullet.damageAmount = this.damageAmount;
+							var angle = game.physics.arcade.moveToObject(enemyBullet, player, bulletSpeed);
+							enemyBullet.angle = game.math.radToDeg(angle);
+						}
+						//  Kill enemies once they go off screen
+						if (this.x == 0) {
+					  		this.kill();
+						}
+					};
+		        }
+		    }
+		    //  Send another wave soon
+			secondEnemyLaunchTimer = game.time.events.add(game.rnd.integerInRange(timeBetweenWaves, timeBetweenWaves + 4000), launchSecondEnemy);
+		}
+		function enemyHitsPlayer (player, bullet) {
+		    var explosion = explosions.getFirstExists(false);
+		    explosion.reset(player.body.x + player.body.halfWidth, player.body.y + player.body.halfHeight);
+		    explosion.alpha = 0.7;
+		    explosion.play('explosion', 30, false, true);
+		    bullet.kill();
+
+		    player.damage(bullet.damageAmount);
+		    shields.render()
 		}
 	</script>
 </body>
