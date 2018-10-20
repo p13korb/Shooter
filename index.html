@@ -58,6 +58,7 @@ body {
 			game.load.audio('destroyed', 'assets/audio/explosion.mp3');
 			game.load.image('firstEnemy', 'assets/enemies/enemy2.png');
 			game.load.spritesheet('explosion', 'assets/explode.png', 128, 128);
+			game.load.bitmapFont('customfont', 'assets/font.png', 'assets/font.fnt');
 
 		}
 
@@ -141,19 +142,21 @@ body {
 		        explosion.animations.add('explosion');
 		    });
 			//  Shields stat
-		    shields = game.add.text(game.world.width - 150, 10, 'Shields: ' + player.health +'%', { font: '20px Arial', fill: '#fff' });
+		    shields = game.add.bitmapText(game.world.width - 350, 10, 'customfont', '' + player.health +'%', 50);
 		    shields.render = function () {
 		        shields.text = 'Shields: ' + Math.max(player.health, 0) +'%';
 		    };
+			shields.render();
 			//  Score
-		    scoreText = game.add.text(10, 10, '', { font: '20px Arial', fill: '#fff' });
+		   scoreText = game.add.bitmapText(10, 10, 'customfont', '', 50);
 		    scoreText.render = function () {
 		        scoreText.text = 'Score: ' + score;
 		    };
 		    scoreText.render();
 			//  Game over text
-		    gameOver = game.add.text(game.world.centerX, game.world.centerY, 'GAME OVER!', { font: '84px Arial', fill: '#fff' });
-		    gameOver.anchor.setTo(0.5, 0.5);
+			gameOver = game.add.bitmapText(game.world.centerX, game.world.centerY, 'customfont', 'GAME OVER!', 110);
+    		gameOver.x = gameOver.x - gameOver.textWidth / 2;
+    		gameOver.y = gameOver.y - gameOver.textHeight / 3;
 		    gameOver.visible = false;
 		}
 
@@ -333,7 +336,6 @@ body {
 
 		    //  Hide the text
 		    gameOver.visible = false;
-
 		}
 	</script>
 </body>
