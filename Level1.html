@@ -60,8 +60,8 @@ body {
 
 			//  We need this because the assets are on github pages
 			//  Remove the next 2 lines if running locally
-			//game.load.baseURL = 'https://p13korb.github.io/Shooter/';
-			//game.load.crossOrigin = 'anonymous';
+			game.load.baseURL = 'https://p13korb.github.io/Shooter/';
+			game.load.crossOrigin = 'anonymous';
 
 			game.load.image('starfield', 'assets/starfield.png');
 			game.load.image('ship', 'assets/ship.png');
@@ -438,6 +438,12 @@ body {
 		            }
 		        }
 		    }
+			//pame gia level 2
+			if(boss.dying == true && score > 15000) { 
+				game.add.text(game.world.centerX - 200, game.world.centerY, 'Moving to Level 2...', { font: '50px', fill: '#FFFFFF' });
+				game.paused = true;
+				window.location.assign('https://p13korb.github.io/Shooter/Level2.html')
+			}
 
 		}
 
@@ -632,7 +638,7 @@ body {
 			}
 
 			//  Launch boss
-			if (!bossLaunched && score > 100) {
+			if (!bossLaunched && score > 10000) {
 				firstEnemySpacing = 5000;
 				//  dramatic pause before boss
 				game.time.events.add(2000, function(){
