@@ -439,7 +439,7 @@ body {
 		        }
 		    }
 			//pame gia level 2
-			if(boss.dying == true && score > 20000) { 
+			if(score > 40000) { 
 				console.log("level2");
 				game.add.text(game.world.centerX - 200, game.world.centerY, 'Moving to Level 2...', { font: '50px', fill: '#FFFFFF' });
 				game.paused = true;
@@ -453,7 +453,7 @@ body {
 		}
 
 		function launchBoss() {
-			boss.reset(game.width, game.rnd.integerInRange(50, 550));
+			boss.reset(game.width + 50, game.rnd.integerInRange(50, 550));
 			booster.start(false, 1000, 10);
 			boss.health = 1000;
 			bossBulletTimer = game.time.now + 5000;
