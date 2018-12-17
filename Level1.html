@@ -537,7 +537,7 @@ body {
 		    explosion.alpha = 0.7;
 		    explosion.play('explosion', 30, false, true);
 		    bullet.kill();
-
+			destroyed.play();
 		    player.damage(bullet.damageAmount);
 		    shields.render()
 		}
